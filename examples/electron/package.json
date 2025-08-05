@@ -113,6 +113,7 @@
   },
   "devDependencies": {
     "@theia/cli": "1.64.0",
-    "electron": "37.2.1"
+    "cpu-features": "0.0.10",
+    "electron": "37.2.4"
   }
 }
