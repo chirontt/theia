@@ -1,0 +1,111 @@
+name: Arm64 CI/CD
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24.x
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Install and Build
+        shell: bash
+        run: |
+          npm ci
+          ./scripts/check_git_status.sh
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+
+      - name: Lint
+        run: |
+          npm run lint
+
+  build:
+    name: Build and Test (${{ matrix.os }}, node-${{ matrix.node }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-11-arm, ubuntu-22.04-arm]
+        node: [22.x, 24.x]
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: ${{ matrix.node }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+      
+      - name: Build
+        shell: bash
+        run: |
+          npm ci
+          npm run build
+          git status
+          ./scripts/check_git_status.sh
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+
+      - name: Download Plugins
+        shell: bash
+        run: |
+          npm run download:plugins -- --rate-limit 3
+          
+      - name: Test (headless)
+        if: matrix.tests != 'skip'
+        shell: bash
+        run: |
+          npm run rebuild:browser
+          npm run test:theia
+
+      - name: Test (browser)
+        # skip browser tests Linux (no chrome-linux-arm64 for testing)
+        if: runner.os == 'Windows'
+        run: |
+          npm run test:browser
+
+      - name: Test (electron)
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a npm run test:electron
+
+      - name: Zip the native dependencies' files
+        run: |
+          npm run zip:native:dependencies
+
+      - name: Upload native dependencies' zip file
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: native-dependencies-${{ runner.os }}-${{ runner.arch }}-node-${{ matrix.node }}
+          path: |
+            scripts/*.zip
+          compression-level: 0 # no compression
+
