@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@eclipse-dash/nodejs-wrapper": "^0.0.1",
+    "@electron/rebuild": "4.0.1",
     "@types/chai": "4.3.0",
     "@types/chai-spies": "1.0.3",
     "@types/chai-string": "^1.4.0",
@@ -23,6 +24,7 @@
     "@typescript-eslint/parser": "^7.18.0",
     "@vscode/vsce": "^2.15.0",
     "archiver": "^5.3.1",
+    "buildcheck": "0.0.7",
     "chai": "4.3.10",
     "chai-spies": "1.0.0",
     "chai-string": "^1.4.0",
