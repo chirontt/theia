@@ -1,0 +1,59 @@
+name: Arm64 Playwright Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-test-playwright:
+    name: Playwright Tests (ubuntu-22.04-arm,  Node.js 24.x)
+
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Use Node.js "24.x"
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install IPython Kernel
+        shell: bash
+        run: |
+          python3 -m pip install ipykernel==6.15.2
+          python3 -m ipykernel install --user
+
+      - name: Build Browser
+        shell: bash
+        run: |
+          npm ci
+          npm run build:browser
+          npm run download:plugins
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+
+      - name: Build Playwright
+        shell: bash
+        run: |
+          cd examples/playwright && npm run build
+
+      - name: Test (playwright)
+        shell: bash
+        run: cd examples/playwright && npm run ui-tests-ci
+
+      - name: Archive test results
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: arm64-playwright-test-results
+          path: |
+            examples/playwright/test-results/
+            examples/playwright/playwright-report/
